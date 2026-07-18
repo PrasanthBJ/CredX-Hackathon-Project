@@ -15,6 +15,11 @@ export const authService = {
         });
         return response.data;
     },
+
+    async verifyEmail(token) {
+        const response = await axiosInstance.get(`/auth/verify-email?token=${token}`);
+        return response.data;
+    },
 };
 
 export default authService;

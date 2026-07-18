@@ -31,4 +31,12 @@ public class AuthController {
         JwtResponse response = authService.login(request);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<java.util.Map<String, String>> verifyEmail(@RequestParam("token") String token) {
+        authService.verifyEmail(token);
+        java.util.Map<String, String> response = new java.util.HashMap<>();
+        response.put("message", "Email verified — access granted, you can now log in");
+        return ResponseEntity.ok(response);
+    }
 }
