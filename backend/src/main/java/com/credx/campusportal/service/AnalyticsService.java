@@ -45,10 +45,19 @@ public class AnalyticsService {
 
     public Map<String, Long> getApplicationsPerCompany() {
         Map<String, Long> appCountPerCompany = new HashMap<>();
+        
+        // Initialize all companies with 0 application count
         companyProfileRepository.findAll().forEach(company -> {
-            long count = applicationRepository.countByPostingCompanyId(company.getId());
-            appCountPerCompany.put(company.getCompanyName(), count);
+            appCountPerCompany.put(company.getCompanyName(), 0L);
         });
+        
+        // Overlay the actual non-zero counts using a single aggregate query
+        applicationRepository.countApplicationsPerCompany().forEach(row -> {
+            String companyName = (String) row[0];
+            Long count = (Long) row[1];
+            appCountPerCompany.put(companyName, count);
+        });
+        
         return appCountPerCompany;
     }
 }

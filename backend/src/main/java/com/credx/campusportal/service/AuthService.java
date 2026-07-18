@@ -29,12 +29,14 @@ public class AuthService {
         this.tokenProvider = tokenProvider;
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public User register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already in use");
         }
 
         User user = User.builder()
+                .name(request.getName())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(request.getRole())

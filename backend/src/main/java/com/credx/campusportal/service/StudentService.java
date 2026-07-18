@@ -30,6 +30,7 @@ public class StudentService {
         this.userRepository = userRepository;
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public StudentProfileDto createOrUpdateProfile(Long userId, StudentProfileDto dto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -60,6 +61,7 @@ public class StudentService {
                 .collect(Collectors.toList());
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public ApplicationDto applyToPosting(Long userId, Long postingId) {
         StudentProfile student = studentProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student profile must be created first"));

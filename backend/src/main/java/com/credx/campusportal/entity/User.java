@@ -22,10 +22,11 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @Column(nullable = false)
     private String password;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = com.credx.campusportal.entity.enums.RoleConverter.class)
     @Column(nullable = false)
     private Role role;
 

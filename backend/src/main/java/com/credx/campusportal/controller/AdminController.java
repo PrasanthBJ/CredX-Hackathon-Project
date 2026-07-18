@@ -28,20 +28,24 @@ public class AdminController {
 
     @GetMapping("/postings")
     public ResponseEntity<List<PostingDto>> getAllJobPostings() {
-        // Will be fully implemented in the Service module
-        return ResponseEntity.ok(List.of());
+        List<PostingDto> postings = adminService.getAllJobPostings();
+        return ResponseEntity.ok(postings);
     }
 
     @PostMapping("/postings/{id}/approve")
-    public ResponseEntity<PostingDto> approveJobPosting(@PathVariable Long id) {
-        // Will be fully implemented in the Service module
-        return ResponseEntity.ok(new PostingDto());
+    public ResponseEntity<PostingDto> approveJobPosting(
+            @PathVariable Long id,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.credx.campusportal.security.CustomUserDetails userDetails) {
+        PostingDto posting = adminService.approveOrRejectJobPosting(id, com.credx.campusportal.entity.enums.PostingStatus.APPROVED, userDetails.getId());
+        return ResponseEntity.ok(posting);
     }
 
     @PostMapping("/postings/{id}/reject")
-    public ResponseEntity<PostingDto> rejectJobPosting(@PathVariable Long id) {
-        // Will be fully implemented in the Service module
-        return ResponseEntity.ok(new PostingDto());
+    public ResponseEntity<PostingDto> rejectJobPosting(
+            @PathVariable Long id,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal com.credx.campusportal.security.CustomUserDetails userDetails) {
+        PostingDto posting = adminService.approveOrRejectJobPosting(id, com.credx.campusportal.entity.enums.PostingStatus.REJECTED, userDetails.getId());
+        return ResponseEntity.ok(posting);
     }
 
     @GetMapping("/analytics/applications-per-company")

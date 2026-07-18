@@ -29,6 +29,7 @@ public class CompanyService {
         this.userRepository = userRepository;
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public CompanyProfileDto createOrUpdateProfile(Long userId, CompanyProfileDto dto) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -51,6 +52,7 @@ public class CompanyService {
         return mapToDto(profile);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public PostingDto createJobPosting(Long userId, PostingDto dto) {
         CompanyProfile company = companyProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Company profile must be created first"));
