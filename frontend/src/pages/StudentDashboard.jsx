@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { LayoutGrid, FileCheck2, Building2, Clock } from "lucide-react";
 import Sidebar from "../components/Sidebar";
+import Topbar from "../components/Topbar";
 import StatCard from "../components/StatCard";
 import Card from "../components/Card";
 import Spinner from "../components/Spinner";
@@ -205,6 +206,7 @@ const PAGE_META = {
     },
 };
 
+
 export default function StudentDashboard() {
     const location = useLocation();
     const meta = PAGE_META[location.pathname] || PAGE_META["/student"];
@@ -212,16 +214,14 @@ export default function StudentDashboard() {
     return (
         <div className="min-h-screen bg-bg flex">
             <Sidebar links={LINKS} />
-            <div className="flex-1 px-10 py-8 max-w-5xl">
-                <div className="mb-7">
-                    <h1 className="text-xl font-semibold text-surface">{meta.title}</h1>
-                    <p className="text-sm text-slate-500 mt-1">{meta.subtitle}</p>
+            <div className="flex-1 flex flex-col">
+                <Topbar title={meta.title} subtitle={meta.subtitle} />
+                <div className="flex-1 px-10 py-8 max-w-5xl">
+                    <Routes>
+                        <Route index element={<BrowsePostings />} />
+                        <Route path="applications" element={<MyApplications />} />
+                    </Routes>
                 </div>
-
-                <Routes>
-                    <Route index element={<BrowsePostings />} />
-                    <Route path="applications" element={<MyApplications />} />
-                </Routes>
             </div>
         </div>
     );
