@@ -36,6 +36,26 @@ public class StudentController {
         return ResponseEntity.ok(profile);
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<List<StudentProfileDto>> getAllProfiles() {
+        List<StudentProfileDto> profiles = studentService.getAllProfiles();
+        return ResponseEntity.ok(profiles);
+    }
+
+    @PutMapping("/{userId}/profile-other")
+    public ResponseEntity<StudentProfileDto> updateProfileByOther(
+            @PathVariable Long userId,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody StudentProfileDto dto) {
+        StudentProfileDto profile = studentService.updateProfileByOther(
+                userId,
+                dto,
+                userDetails.getUser().getName(),
+                userDetails.getUser().getRole().name()
+        );
+        return ResponseEntity.ok(profile);
+    }
+
     @GetMapping("/postings")
     public ResponseEntity<List<PostingDto>> getApprovedJobPostings() {
         List<PostingDto> postings = studentService.getApprovedPostings();

@@ -26,6 +26,16 @@ export const studentService = {
         const response = await axiosInstance.get("/student/applications");
         return response.data;
     },
+
+    async getAllProfiles() {
+        const response = await axiosInstance.get("/student/all");
+        return response.data;
+    },
+
+    async updateProfileByOther(userId, profileData) {
+        const response = await axiosInstance.put(`/student/${userId}/profile-other`, profileData);
+        return response.data;
+    },
 };
 
 export default studentService;

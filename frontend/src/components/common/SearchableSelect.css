@@ -1,0 +1,128 @@
+/* Searchable Select with Icons */
+.searchable-select-root {
+  position: relative;
+  width: 100%;
+}
+
+.searchable-select-root.open {
+  z-index: 999;
+}
+
+.select-trigger-btn {
+  width: 100%;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 0 1rem;
+  background: #ffffff;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  font-size: 0.875rem;
+  color: var(--text-main, #111827);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.select-icon-left {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  margin-right: 0.75rem;
+}
+
+.select-icon-left.warehouse { background: rgba(30, 96, 255, 0.12); color: var(--primary, #1e60ff); }
+.select-icon-left.role { background: rgba(139, 92, 246, 0.12); color: #8b5cf6; }
+
+.select-trigger-btn:hover:not(:disabled) {
+  border-color: #cbd5e1;
+}
+
+.select-trigger-btn.open {
+  border-color: var(--primary, #1e60ff);
+  box-shadow: 0 0 0 3px rgba(30, 96, 255, 0.15);
+}
+
+.select-trigger-btn:disabled {
+  background: #f8fafc;
+  cursor: not-allowed;
+}
+
+.select-trigger-value {
+  flex: 1;
+}
+
+.select-trigger-placeholder {
+  color: #94a3b8;
+}
+
+.select-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+  z-index: 50;
+  max-height: 200px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.select-search-container {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.select-search-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.select-search-input:focus {
+  border-color: var(--primary, #1e60ff);
+}
+
+.select-options-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem;
+  overflow-y: auto;
+}
+
+.select-option-item {
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.1s ease;
+  color: var(--text-main, #111827);
+}
+
+.select-option-item:hover {
+  background: var(--bg-hover, #f8fafc);
+}
+
+.select-option-item.selected {
+  background: rgba(30, 96, 255, 0.08);
+  color: var(--primary, #1e60ff);
+  font-weight: 500;
+}
+
+.select-no-results {
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-muted, #6B7280);
+  font-size: 0.875rem;
+}

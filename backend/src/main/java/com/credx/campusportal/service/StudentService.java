@@ -54,6 +54,40 @@ public class StudentService {
         return mapToDto(profile);
     }
 
+    public List<StudentProfileDto> getAllProfiles() {
+        return studentProfileRepository.findAll()
+                .stream()
+                .map(this::mapToDto)
+                .collect(Collectors.toList());
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public StudentProfileDto updateProfileByOther(Long studentUserId, StudentProfileDto dto, String updaterName, String updaterRole) {
+        User studentUser = userRepository.findById(studentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student User not found"));
+
+        StudentProfile profile = studentProfileRepository.findByUserId(studentUserId)
+                .orElse(new StudentProfile());
+
+        profile.setUser(studentUser);
+        profile.setBranch(dto.getBranch());
+        profile.setGpa(dto.getGpa());
+        profile.setGradYear(dto.getGradYear());
+        profile.setResumeUrl(dto.getResumeUrl());
+
+        // Append updater details to updatedByList
+        String updateRecord = updaterName + " (" + updaterRole + ")";
+        String currentList = profile.getUpdatedByList();
+        if (currentList == null || currentList.trim().isEmpty()) {
+            profile.setUpdatedByList(updateRecord);
+        } else if (!currentList.contains(updateRecord)) {
+            profile.setUpdatedByList(currentList + ", " + updateRecord);
+        }
+
+        StudentProfile saved = studentProfileRepository.save(profile);
+        return mapToDto(saved);
+    }
+
     public List<PostingDto> getApprovedPostings() {
         return postingRepository.findByStatus(PostingStatus.APPROVED)
                 .stream()
@@ -100,10 +134,16 @@ public class StudentService {
     private StudentProfileDto mapToDto(StudentProfile profile) {
         StudentProfileDto dto = new StudentProfileDto();
         dto.setId(profile.getId());
+        if (profile.getUser() != null) {
+            dto.setUserId(profile.getUser().getId());
+            dto.setStudentName(profile.getUser().getName());
+            dto.setStudentEmail(profile.getUser().getEmail());
+        }
         dto.setBranch(profile.getBranch());
         dto.setGpa(profile.getGpa());
         dto.setGradYear(profile.getGradYear());
         dto.setResumeUrl(profile.getResumeUrl());
+        dto.setUpdatedByList(profile.getUpdatedByList());
         return dto;
     }
 

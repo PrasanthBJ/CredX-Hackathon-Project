@@ -26,4 +26,7 @@ public class StudentProfile {
 
     @Column(name = "resume_url")
     private String resumeUrl;
+
+    @Column(name = "updated_by_list", length = 4000)
+    private String updatedByList;
 }

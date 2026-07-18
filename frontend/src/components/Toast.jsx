@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CheckCircle2, XCircle, X } from "lucide-react";
 
 export default function Toast() {
     const [toast, setToast] = useState(null);
@@ -8,7 +9,7 @@ export default function Toast() {
         const handleToast = (e) => {
             const { type, message } = e.detail;
             setToast({ type, message });
-            
+
             if (timer) clearTimeout(timer);
             timer = setTimeout(() => {
                 setToast(null);
@@ -25,31 +26,34 @@ export default function Toast() {
     if (!toast) return null;
 
     const isError = toast.type === "error";
-    const bgClass = isError 
-        ? "bg-rose-50 border-rose-200 text-rose-800" 
-        : "bg-emerald-50 border-emerald-200 text-emerald-800";
 
     return (
-        <div 
-            className={`fixed bottom-5 right-5 z-50 max-w-sm rounded-lg border p-4 shadow-lg ${bgClass} transition-all duration-300`}
-            style={{
-                boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
-                animation: "slideUp 0.3s ease-out"
-            }}
+        <div
+            className={`fixed bottom-5 right-5 z-50 w-80 rounded-xl border p-4 shadow-xl ${
+                isError
+                    ? "bg-rose-50 border-rose-200 text-rose-800"
+                    : "bg-emerald-50 border-emerald-200 text-emerald-800"
+            }`}
+            style={{ animation: "toastSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1)" }}
         >
             <div className="flex items-start gap-3">
-                <div className="flex-1 text-sm font-medium">{toast.message}</div>
+                {isError ? (
+                    <XCircle className="w-4 h-4 mt-0.5 shrink-0 text-rose-500" />
+                ) : (
+                    <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-emerald-500" />
+                )}
+                <div className="flex-1 text-xs font-medium leading-relaxed">{toast.message}</div>
                 <button
                     onClick={() => setToast(null)}
-                    className="text-slate-400 hover:text-slate-600 focus:outline-none"
+                    className="text-slate-400 hover:text-slate-600 shrink-0 cursor-pointer"
                 >
-                    <span className="text-lg leading-none">&times;</span>
+                    <X className="w-3.5 h-3.5" />
                 </button>
             </div>
             <style>{`
-                @keyframes slideUp {
-                    from { transform: translateY(100%); opacity: 0; }
-                    to { transform: translateY(0); opacity: 1; }
+                @keyframes toastSlide {
+                    from { transform: translateY(16px); opacity: 0; }
+                    to   { transform: translateY(0);    opacity: 1; }
                 }
             `}</style>
         </div>

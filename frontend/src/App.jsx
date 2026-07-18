@@ -8,6 +8,7 @@ import VerifyEmail from "./pages/VerifyEmail";
 import CompanyDashboard from "./pages/CompanyDashboard";
 import StudentDashboard from "./pages/StudentDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import MainLayout from "./layouts/MainLayout";
 
 import Toast from "./components/Toast";
 
@@ -25,7 +26,9 @@ export default function App() {
                 path="/company/*"
                 element={
                   <ProtectedRoute allowedRole="COMPANY">
-                    <CompanyDashboard />
+                    <MainLayout>
+                      <CompanyDashboard />
+                    </MainLayout>
                   </ProtectedRoute>
                 }
             />
@@ -34,7 +37,9 @@ export default function App() {
                 path="/student/*"
                 element={
                   <ProtectedRoute allowedRole="STUDENT">
-                    <StudentDashboard />
+                    <MainLayout>
+                      <StudentDashboard />
+                    </MainLayout>
                   </ProtectedRoute>
                 }
             />
@@ -43,7 +48,9 @@ export default function App() {
                 path="/admin/*"
                 element={
                   <ProtectedRoute allowedRole="ADMIN">
-                    <AdminDashboard />
+                    <MainLayout>
+                      <AdminDashboard />
+                    </MainLayout>
                   </ProtectedRoute>
                 }
             />

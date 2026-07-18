@@ -22,7 +22,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
     }
 
-    @ExceptionHandler({DuplicateApplicationException.class, InvalidStateTransitionException.class})
+    @ExceptionHandler({DuplicateApplicationException.class, InvalidStateTransitionException.class, IllegalArgumentException.class})
     public ResponseEntity<Object> handleBadRequestExceptions(RuntimeException ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now());
@@ -110,6 +110,15 @@ public class GlobalExceptionHandler {
         
         body.put("message", message);
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<Object> handleAuthenticationException(org.springframework.security.core.AuthenticationException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("message", ex.getMessage() != null && !ex.getMessage().trim().isEmpty() ? ex.getMessage() : "Invalid email or password");
+        body.put("status", HttpStatus.UNAUTHORIZED.value());
+        return new ResponseEntity<>(body, HttpStatus.UNAUTHORIZED);
     }
 
     @ExceptionHandler(Exception.class)

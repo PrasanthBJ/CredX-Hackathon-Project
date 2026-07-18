@@ -72,7 +72,7 @@ public class AuthService {
 
     public JwtResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new org.springframework.security.authentication.BadCredentialsException("Invalid email or password"));
 
         if (!user.isEmailVerified()) {
             throw new com.credx.campusportal.exception.EmailUnverifiedException("please verify your email before logging in");
@@ -107,5 +107,43 @@ public class AuthService {
         user.setVerificationTokenExpiry(null);
 
         userRepository.save(user);
+    }
+
+    public User getUserById(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new com.credx.campusportal.exception.ResourceNotFoundException("User not found"));
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public User updateSettings(Long userId, String name, String email, String currentPassword, String newPassword, String profileImage) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new com.credx.campusportal.exception.ResourceNotFoundException("User not found"));
+
+        if (email != null && !email.trim().isEmpty() && !email.equalsIgnoreCase(user.getEmail())) {
+            if (userRepository.findByEmail(email).isPresent()) {
+                throw new com.credx.campusportal.exception.EmailConflictException("Email already taken");
+            }
+            user.setEmail(email);
+        }
+
+        if (name != null && !name.trim().isEmpty()) {
+            user.setName(name);
+        }
+
+        if (profileImage != null) {
+            user.setProfileImage(profileImage);
+        }
+
+        if (currentPassword != null && !currentPassword.isEmpty() && newPassword != null && !newPassword.isEmpty()) {
+            if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+                throw new org.springframework.security.authentication.BadCredentialsException("Current password does not match");
+            }
+            if (newPassword.length() < 6) {
+                throw new IllegalArgumentException("New password must be at least 6 characters");
+            }
+            user.setPassword(passwordEncoder.encode(newPassword));
+        }
+
+        return userRepository.save(user);
     }
 }

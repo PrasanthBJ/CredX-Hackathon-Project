@@ -20,6 +20,16 @@ export const authService = {
         const response = await axiosInstance.get(`/auth/verify-email?token=${token}`);
         return response.data;
     },
+
+    async getSettings() {
+        const response = await axiosInstance.get("/user/settings");
+        return response.data;
+    },
+
+    async updateSettings(settingsData) {
+        const response = await axiosInstance.post("/user/settings", settingsData);
+        return response.data;
+    },
 };
 
 export default authService;

@@ -40,6 +40,9 @@ public class User {
     @Column(name = "verification_token_expiry")
     private java.time.LocalDateTime verificationTokenExpiry;
 
+    @Column(name = "profile_image", columnDefinition = "LONGTEXT")
+    private String profileImage;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
