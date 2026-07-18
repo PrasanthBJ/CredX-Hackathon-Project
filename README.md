@@ -1,3 +1,14 @@
+
+
+
+
+**#demo video link"** - **https://drive.google.com/drive/folders/1E8GRXDbfSshD0oWEnnz9QT4u4hBsxr8s**
+
+
+
+
+
+
 # CredX - Campus Placement & Recruiting Portal
 
 CredX is a premium, feature-rich corporate recruiting dashboard system designed to manage campus placements. The platform features tailored workspaces for **Placement coordinators (Admins)**, **Corporate recruiters (Company)**, and **Student Candidates**.
