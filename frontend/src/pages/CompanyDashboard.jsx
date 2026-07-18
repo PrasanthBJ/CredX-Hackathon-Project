@@ -18,6 +18,7 @@ import {
 const LINKS = [
     { to: "/company", label: "My Postings", icon: Briefcase, end: true },
     { to: "/company/create", label: "Create Posting", icon: PlusCircle },
+    { to: "/company/profile", label: "Company Profile", icon: UserCircle },
 ];
 
 function MyPostings() {
@@ -303,7 +304,114 @@ function Applicants() {
 const PAGE_META = {
     "/company": { title: "My Postings", subtitle: "Track the status of every posting you've submitted." },
     "/company/create": { title: "Create Posting", subtitle: "Submit a new role for admin review." },
+    "/company/profile": { title: "Company Profile", subtitle: "This is what students will see on your postings." },
 };
+
+function CompanyProfile() {
+    const [form, setForm] = useState({ companyName: "", description: "", website: "" });
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState(false);
+
+    useEffect(() => {
+        getCompanyProfile()
+            .then((res) => {
+                if (res.data) {
+                    setForm({
+                        companyName: res.data.companyName || "",
+                        description: res.data.description || "",
+                        website: res.data.website || "",
+                    });
+                }
+            })
+            .catch(() => {})
+            .finally(() => setLoading(false));
+    }, []);
+
+    const handleChange = (field) => (e) =>
+        setForm((prev) => ({ ...prev, [field]: e.target.value }));
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError("");
+        setSaving(true);
+        try {
+            await upsertCompanyProfile(form);
+            setSuccess(true);
+            setTimeout(() => setSuccess(false), 2500);
+        } catch (err) {
+            setError(err.response?.data?.message || "Could not save profile.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) return <Spinner label="Loading profile..." />;
+
+    return (
+        <Card className="max-w-lg">
+            {error && (
+                <div className="mb-4 text-sm text-status-rejected bg-rose-50 border border-rose-200 rounded-md px-3 py-2">
+                    {error}
+                </div>
+            )}
+            {success && (
+                <div className="mb-4 text-sm text-status-approved bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2">
+                    Profile saved.
+                </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-xs font-medium text-slate-600 uppercase tracking-wide mb-1.5">
+                        Company Name
+                    </label>
+                    <input
+                        required
+                        value={form.companyName}
+                        onChange={handleChange("companyName")}
+                        placeholder="Acme Corp"
+                        className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-xs font-medium text-slate-600 uppercase tracking-wide mb-1.5">
+                        Description
+                    </label>
+                    <textarea
+                        rows={3}
+                        value={form.description}
+                        onChange={handleChange("description")}
+                        placeholder="What your company does..."
+                        className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent resize-none"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-xs font-medium text-slate-600 uppercase tracking-wide mb-1.5">
+                        Website
+                    </label>
+                    <input
+                        value={form.website}
+                        onChange={handleChange("website")}
+                        placeholder="https://acme.com"
+                        className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+                    />
+                </div>
+
+                <button
+                    type="submit"
+                    disabled={saving}
+                    className="w-full bg-accent hover:bg-accent-hover text-white text-sm font-medium rounded-lg py-2.5 transition-colors disabled:opacity-60"
+                >
+                    {saving ? "Saving..." : "Save Profile"}
+                </button>
+            </form>
+        </Card>
+    );
+}
 
 export default function CompanyDashboard() {
     const location = useLocation();
@@ -322,6 +430,7 @@ export default function CompanyDashboard() {
                         <Route index element={<MyPostings />} />
                         <Route path="create" element={<CreatePosting />} />
                         <Route path="postings/:postingId/applicants" element={<Applicants />} />
+                        <Route path="profile" element={<CompanyProfile />} />
                     </Routes>
                 </div>
             </div>

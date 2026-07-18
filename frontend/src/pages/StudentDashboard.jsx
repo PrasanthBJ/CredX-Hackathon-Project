@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
-import { LayoutGrid, FileCheck2, Building2, Clock } from "lucide-react";
+import { LayoutGrid, FileCheck2, Building2, Clock, UserCircle } from "lucide-react";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 import StatCard from "../components/StatCard";
@@ -8,6 +8,7 @@ import Card from "../components/Card";
 import Spinner from "../components/Spinner";
 import EmptyState from "../components/EmptyState";
 import StatusBadge from "../components/StatusBadge";
+import { getStudentProfile, upsertStudentProfile } from "../api/studentApi";
 import {
     getApprovedPostings,
     applyToPosting,
@@ -17,6 +18,7 @@ import {
 const LINKS = [
     { to: "/student", label: "Browse Postings", icon: LayoutGrid, end: true },
     { to: "/student/applications", label: "My Applications", icon: FileCheck2 },
+    { to: "/student/profile", label: "My Profile", icon: UserCircle },
 ];
 
 function CompanyAvatar({ name }) {
@@ -204,8 +206,135 @@ const PAGE_META = {
         title: "My Applications",
         subtitle: "Track the status of every application you've submitted.",
     },
+    "/student/profile": {
+        title: "My Profile",
+        subtitle: "Keep your academic details up to date.",
+    },
 };
 
+function StudentProfile() {
+    const [form, setForm] = useState({ branch: "", gpa: "", gradYear: "", resumeUrl: "" });
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState(false);
+
+    useEffect(() => {
+        getStudentProfile()
+            .then((res) => {
+                if (res.data) {
+                    setForm({
+                        branch: res.data.branch || "",
+                        gpa: res.data.gpa || "",
+                        gradYear: res.data.gradYear || "",
+                        resumeUrl: res.data.resumeUrl || "",
+                    });
+                }
+            })
+            .catch(() => {})
+            .finally(() => setLoading(false));
+    }, []);
+
+    const handleChange = (field) => (e) =>
+        setForm((prev) => ({ ...prev, [field]: e.target.value }));
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError("");
+        setSaving(true);
+        try {
+            await upsertStudentProfile(form);
+            setSuccess(true);
+            setTimeout(() => setSuccess(false), 2500);
+        } catch (err) {
+            setError(err.response?.data?.message || "Could not save profile.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    if (loading) return <Spinner label="Loading profile..." />;
+
+    return (
+        <Card className="max-w-lg">
+            {error && (
+                <div className="mb-4 text-sm text-status-rejected bg-rose-50 border border-rose-200 rounded-md px-3 py-2">
+                    {error}
+                </div>
+            )}
+            {success && (
+                <div className="mb-4 text-sm text-status-approved bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2">
+                    Profile saved.
+                </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-xs font-medium text-slate-600 uppercase tracking-wide mb-1.5">
+                        Branch
+                    </label>
+                    <input
+                        required
+                        value={form.branch}
+                        onChange={handleChange("branch")}
+                        placeholder="Information Technology"
+                        className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+                    />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-medium text-slate-600 uppercase tracking-wide mb-1.5">
+                            GPA
+                        </label>
+                        <input
+                            type="number"
+                            step="0.01"
+                            required
+                            value={form.gpa}
+                            onChange={handleChange("gpa")}
+                            placeholder="8.16"
+                            className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-slate-600 uppercase tracking-wide mb-1.5">
+                            Graduation Year
+                        </label>
+                        <input
+                            type="number"
+                            required
+                            value={form.gradYear}
+                            onChange={handleChange("gradYear")}
+                            placeholder="2027"
+                            className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+                        />
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-xs font-medium text-slate-600 uppercase tracking-wide mb-1.5">
+                        Resume Link
+                    </label>
+                    <input
+                        value={form.resumeUrl}
+                        onChange={handleChange("resumeUrl")}
+                        placeholder="https://drive.google.com/..."
+                        className="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
+                    />
+                </div>
+
+                <button
+                    type="submit"
+                    disabled={saving}
+                    className="w-full bg-accent hover:bg-accent-hover text-white text-sm font-medium rounded-lg py-2.5 transition-colors disabled:opacity-60"
+                >
+                    {saving ? "Saving..." : "Save Profile"}
+                </button>
+            </form>
+        </Card>
+    );
+}
 
 export default function StudentDashboard() {
     const location = useLocation();
@@ -220,9 +349,11 @@ export default function StudentDashboard() {
                     <Routes>
                         <Route index element={<BrowsePostings />} />
                         <Route path="applications" element={<MyApplications />} />
+                        <Route path="profile" element={<StudentProfile />} />
                     </Routes>
                 </div>
             </div>
         </div>
     );
 }
+
