@@ -1,0 +1,54 @@
+package com.credx.campusportal.service;
+
+import com.credx.campusportal.entity.enums.ApplicationStatus;
+import com.credx.campusportal.repository.ApplicationRepository;
+import com.credx.campusportal.repository.CompanyProfileRepository;
+import com.credx.campusportal.repository.StudentProfileRepository;
+import org.springframework.stereotype.Service;
+import java.util.HashMap;
+import java.util.Map;
+
+@Service
+public class AnalyticsService {
+
+    private final ApplicationRepository applicationRepository;
+    private final CompanyProfileRepository companyProfileRepository;
+    private final StudentProfileRepository studentProfileRepository;
+
+    public AnalyticsService(ApplicationRepository applicationRepository,
+                            CompanyProfileRepository companyProfileRepository,
+                            StudentProfileRepository studentProfileRepository) {
+        this.applicationRepository = applicationRepository;
+        this.companyProfileRepository = companyProfileRepository;
+        this.studentProfileRepository = studentProfileRepository;
+    }
+
+    public Map<String, Object> getSystemAnalytics() {
+        Map<String, Object> analytics = new HashMap<>();
+
+        long totalStudents = studentProfileRepository.count();
+        long totalCompanies = companyProfileRepository.count();
+        long totalApplications = applicationRepository.count();
+
+        long acceptedApplications = applicationRepository.countByStatus(ApplicationStatus.SELECTED);
+        double placementRate = totalStudents > 0 
+                ? ((double) acceptedApplications / totalStudents) * 100.0 
+                : 0.0;
+
+        analytics.put("totalStudents", totalStudents);
+        analytics.put("totalCompanies", totalCompanies);
+        analytics.put("totalApplications", totalApplications);
+        analytics.put("placementRatePercentage", placementRate);
+
+        return analytics;
+    }
+
+    public Map<String, Long> getApplicationsPerCompany() {
+        Map<String, Long> appCountPerCompany = new HashMap<>();
+        companyProfileRepository.findAll().forEach(company -> {
+            long count = applicationRepository.countByPostingCompanyId(company.getId());
+            appCountPerCompany.put(company.getCompanyName(), count);
+        });
+        return appCountPerCompany;
+    }
+}
