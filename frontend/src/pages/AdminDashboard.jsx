@@ -5,7 +5,7 @@ import StatCard from "../components/shared/StatCard";
 import dashboardService from "../services/dashboardService";
 import authService from "../services/authService";
 import {
-  GraduationCap, Building2, FileText, TrendingUp, CheckSquare, Users, ClipboardList
+  GraduationCap, Building2, FileText, TrendingUp, CheckSquare, Users, ClipboardList, ArrowRight
 } from "lucide-react";
 import { motion } from "framer-motion";
 
