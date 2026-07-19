@@ -10,9 +10,9 @@ spring:
   codec:
     max-in-memory-size: 50MB
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/credx?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:Dinesh@2006}
+    url: jdbc:mysql://localhost:3306/credx?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root
+    password: Prasanth@18
   jpa:
     hibernate:
       ddl-auto: update
