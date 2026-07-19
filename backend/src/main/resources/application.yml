@@ -1,18 +1,23 @@
 spring:
   application:
     name: credx
+
   profiles:
     active: dev
+
   servlet:
     multipart:
       max-file-size: 50MB
       max-request-size: 50MB
+
   codec:
     max-in-memory-size: 50MB
+
   datasource:
-    url: jdbc:mysql://localhost:3306/credx?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-    username: root
-    password: Prasanth@18
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -21,25 +26,25 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
+
   mail:
     host: ${SMTP_HOST:smtp.gmail.com}
     port: ${SMTP_PORT:587}
-    username: ${SMTP_USERNAME:kumar235376@gmail.com}
-    password: ${SMTP_PASSWORD:oqbxqqupriqtfbbq}
+    username: ${SMTP_USERNAME}
+    password: ${SMTP_PASSWORD}
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
-            required: true
 
 jwt:
   secret: ${JWT_SECRET:5J2b55yX55qE6Zu25L+h6KaB57Si5b+F6aG75oiQ5YqfMTIzNDU2Nzg5MA==}
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
 app:
-  frontend-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+  frontend-url: ${FRONTEND_BASE_URL:https://cred-x-hackathon-project.vercel.app}
   mail:
     from: ${SMTP_FROM:${SMTP_USERNAME:noreply@credx.com}}
 
