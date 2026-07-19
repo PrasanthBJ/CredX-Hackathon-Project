@@ -5,21 +5,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Mail,
   Lock,
-  User,
-  Briefcase,
+  Eye,
+  EyeOff,
   ArrowRight,
   Building2,
   Users,
   TrendingUp,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 
-const ROLES = [
-  { value: "STUDENT", label: "Student" },
-  { value: "COMPANY", label: "Company" },
-  { value: "ADMIN", label: "Admin" },
-];
+
 
 const STATS = [
   { value: "500+", label: "Companies", icon: Building2 },
@@ -27,17 +21,16 @@ const STATS = [
   { value: "85%", label: "Placement Rate", icon: TrendingUp },
 ];
 
-export default function Register() {
-  const [name, setName] = useState("");
+export default function LandingPage() {
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("STUDENT");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const { register } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -46,11 +39,14 @@ export default function Register() {
     setLoading(true);
 
     try {
-      await register(name, email, password, role);
-      setSuccess(true);
-      setTimeout(() => navigate("/login"), 1200);
+      const role = await login(email, password);
+
+      if (role === "COMPANY") navigate("/company");
+      else if (role === "STUDENT") navigate("/student");
+      else if (role === "ADMIN") navigate("/admin");
+      else navigate("/");
     } catch (err) {
-      setError(err.response?.data?.message || "Registration failed. Try again.");
+      setError(err.response?.data?.message || "Invalid email or password.");
     } finally {
       setLoading(false);
     }
@@ -105,9 +101,9 @@ export default function Register() {
             transition={{ delay: 0.2, duration: 0.6 }}
           >
             <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-extrabold text-white tracking-tight leading-[1.1]">
-              Get Started.
+              Get Hired.
               <br />
-              Create Your Account.
+              Grow Your Career.
             </h1>
             <p className="text-blue-200/80 text-base sm:text-lg mt-5 max-w-md leading-relaxed font-medium">
               Connecting talented students with top companies — all in one place.
@@ -148,8 +144,8 @@ export default function Register() {
         </div>
       </motion.div>
 
-      {/* ═══════════ RIGHT REGISTER PANEL ═══════════ */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12 sm:px-10 lg:px-16 bg-white animate-fade-in">
+      {/* ═══════════ RIGHT LOGIN PANEL ═══════════ */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12 sm:px-10 lg:px-16 bg-white">
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
@@ -170,82 +166,35 @@ export default function Register() {
           </div>
 
           {/* Heading */}
-          <div className="mb-6">
+          <div className="mb-8">
             <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
-              Create an Account
+              Welcome Back
             </h2>
             <p className="text-sm text-slate-500 mt-1.5">
-              Sign up to gain access to the campus recruiting cell
+              Sign in to your CredX account
             </p>
           </div>
 
-          {/* Role Tabs */}
-          <div className="flex bg-slate-100 rounded-xl p-1 mb-6">
-            {ROLES.map((r) => (
-              <button
-                key={r.value}
-                type="button"
-                onClick={() => setRole(r.value)}
-                className={`flex-1 text-sm font-semibold py-2.5 rounded-lg transition-all duration-200 cursor-pointer ${
-                  role === r.value
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
 
-          {/* Alerts */}
+
+          {/* Error */}
           <AnimatePresence>
             {error && (
               <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="mb-4 flex items-center gap-2.5 text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3"
+                className="mb-5 flex items-center gap-2.5 text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
                 {error}
               </motion.div>
             )}
-
-            {success && (
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="mb-4 flex items-center gap-2.5 text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                Account created successfully! Redirecting to login…
-              </motion.div>
-            )}
           </AnimatePresence>
 
-          {/* Registration Form */}
+          {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Full Name */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
-                Full Name
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <User className="w-[18px] h-[18px]" />
-                </div>
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter your full name"
-                  className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-150"
-                />
-              </div>
-            </div>
-
-            {/* Email Address */}
+            {/* Email */}
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                 Email Address
@@ -279,7 +228,7 @@ export default function Register() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Create a password"
+                  placeholder="Enter password"
                   className="w-full rounded-xl border border-slate-200 bg-white pl-11 pr-11 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-150"
                 />
                 <button
@@ -296,13 +245,32 @@ export default function Register() {
               </div>
             </div>
 
-            {/* Submit Button */}
+            {/* Remember Me + Forgot Password */}
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500/30 cursor-pointer"
+                />
+                <span className="text-sm text-slate-600">Remember me</span>
+              </label>
+              <button
+                type="button"
+                className="text-sm text-blue-600 font-medium hover:text-blue-700 transition-colors cursor-pointer"
+              >
+                Forgot password?
+              </button>
+            </div>
+
+            {/* Sign In Button */}
             <motion.button
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.99 }}
               type="submit"
-              disabled={loading || success}
-              className="w-full flex items-center justify-center gap-2 text-white text-sm font-semibold rounded-xl py-3 mt-4 transition-all duration-200 disabled:opacity-60 cursor-pointer shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30"
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 text-white text-sm font-semibold rounded-xl py-3 mt-3 transition-all duration-200 disabled:opacity-60 cursor-pointer shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30"
               style={{
                 background: "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)",
               }}
@@ -329,25 +297,25 @@ export default function Register() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                     />
                   </svg>
-                  Creating account…
+                  Signing in…
                 </>
               ) : (
                 <>
-                  Register
+                  Sign In
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </motion.button>
           </form>
 
-          {/* Login Link */}
+          {/* Register Link */}
           <p className="text-sm text-slate-500 mt-7 text-center">
-            Already have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link
-              to="/login"
+              to="/register"
               className="text-blue-600 font-semibold hover:text-blue-700 hover:underline transition-colors"
             >
-              Sign In
+              Register
             </Link>
           </p>
         </motion.div>

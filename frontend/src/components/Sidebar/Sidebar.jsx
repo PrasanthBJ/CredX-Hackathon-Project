@@ -1,278 +1,196 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import {
-    LayoutDashboard,
-    Briefcase,
-    FileText,
-    User,
-    Building2,
-    Settings,
-    ChevronRight,
-    PanelLeftClose,
-    PanelLeftOpen,
-    ClipboardList,
-    Users,
-    Activity
+  LayoutDashboard,
+  Briefcase,
+  FileText,
+  User,
+  Building2,
+  Settings,
+  Search,
+  ClipboardCheck,
+  Users,
+  BarChart3,
+  FileBarChart,
+  PlusCircle,
+  HelpCircle,
+  MessageSquare,
+  Bell,
+  FileEdit,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import FlyoutMenu from "./FlyoutMenu";
-import "./Sidebar.css";
+
+const STUDENT_ITEMS = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/student" },
+  { id: "browse-jobs", label: "Browse Jobs", icon: Search, path: "/student/jobs" },
+  { id: "applications", label: "My Applications", icon: FileText, path: "/student/applications" },
+  { id: "profile", label: "Profile", icon: User, path: "/student/profile" },
+  { id: "notifications", label: "Notifications", icon: Bell, path: "/student/notifications" },
+];
+
+const COMPANY_ITEMS = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/company" },
+  { id: "post-job", label: "Post Job", icon: PlusCircle, path: "/company/post-job" },
+  { id: "my-jobs", label: "Manage Jobs", icon: Briefcase, path: "/company/jobs" },
+  { id: "applicants", label: "Applicants", icon: Users, path: "/company/applicants" },
+  { id: "company-profile", label: "Company Profile", icon: Building2, path: "/company/profile" },
+  { id: "analytics", label: "Analytics", icon: BarChart3, path: "/company/analytics" },
+];
+
+const ADMIN_ITEMS = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/admin" },
+  { id: "approvals", label: "Pending Approvals", icon: ClipboardCheck, path: "/admin/pending" },
+  { id: "students", label: "Students", icon: Users, path: "/admin/students" },
+  { id: "companies", label: "Companies", icon: Building2, path: "/admin/companies" },
+  { id: "jobs", label: "Jobs", icon: Briefcase, path: "/admin/jobs" },
+  { id: "reports", label: "Reports", icon: FileBarChart, path: "/admin/reports" },
+  { id: "analytics", label: "Analytics", icon: BarChart3, path: "/admin/analytics" },
+];
 
 function Sidebar({ isCollapsed, toggleSidebar, mobileOpen, setMobileOpen }) {
-    const { role } = useAuth();
-    const location = useLocation();
-    
-    // Hover & Flyout states
-    const [hoveredMenu, setHoveredMenu] = useState(null);
-    const [flyoutPosition, setFlyoutPosition] = useState(null);
-    const leaveTimeoutRef = useRef(null);
+  const { role } = useAuth();
+  const location = useLocation();
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-    // Responsive states
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-    useEffect(() => {
-        const handleResize = () => {
-            setIsMobile(window.innerWidth < 768);
-        };
-        window.addEventListener("resize", handleResize);
-        return () => window.removeEventListener("resize", handleResize);
-    }, []);
+  const getItems = () => {
+    if (role === "STUDENT") return STUDENT_ITEMS;
+    if (role === "COMPANY") return COMPANY_ITEMS;
+    if (role === "ADMIN") return ADMIN_ITEMS;
+    return [];
+  };
 
-    const handleParentMouseEnter = (item, e) => {
-        if (leaveTimeoutRef.current) {
-            clearTimeout(leaveTimeoutRef.current);
-            leaveTimeoutRef.current = null;
-        }
+  const items = getItems();
+  const settingsPath = role === "STUDENT" ? "/student/settings" : role === "COMPANY" ? "/company/settings" : "/admin/settings";
 
-        if (item.submenu) {
-            setHoveredMenu(item);
-            const liElement = e.currentTarget;
-            const sidebarElement = liElement.closest('.sidebar');
-            if (sidebarElement) {
-                const sidebarRect = sidebarElement.getBoundingClientRect();
-                const itemRect = liElement.getBoundingClientRect();
-                const relativeTop = itemRect.top - sidebarRect.top;
-                
-                let estimatedHeight = 50; 
-                item.submenu.forEach(() => {
-                    estimatedHeight += 34;
-                });
-                
-                const top = Math.max(16, Math.min(relativeTop, sidebarRect.height - estimatedHeight - 16));
-                setFlyoutPosition({ top, isBottom: false });
-            }
-        } else {
-            setHoveredMenu(null);
-        }
-    };
+  const isActive = (item) => {
+    return location.pathname === item.path;
+  };
 
-    const handleParentMouseLeave = () => {
-        leaveTimeoutRef.current = setTimeout(() => {
-            setHoveredMenu(null);
-        }, 180);
-    };
+  const sidebarWidth = isCollapsed ? "w-[72px]" : "w-[240px]";
 
-    const handleFlyoutMouseEnter = () => {
-        if (leaveTimeoutRef.current) {
-            clearTimeout(leaveTimeoutRef.current);
-            leaveTimeoutRef.current = null;
-        }
-    };
+  return (
+    <>
+      {/* Mobile backdrop */}
+      {isMobile && mobileOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[98]"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
 
-    const handleFlyoutMouseLeave = () => {
-        setHoveredMenu(null);
-    };
+      <aside
+        className={`
+          fixed top-0 left-0 h-screen bg-white border-r border-[#E2E8F0] z-[100]
+          flex flex-col transition-all duration-300 ease-in-out
+          ${isMobile ? (mobileOpen ? "translate-x-0 w-[240px]" : "-translate-x-full w-[240px]") : sidebarWidth}
+        `}
+      >
+        {/* Logo Section */}
+        <div className={`flex items-center h-16 border-b border-[#E2E8F0] px-4 shrink-0 ${isCollapsed && !isMobile ? "justify-center" : "gap-3"}`}>
+          <div className="w-9 h-9 rounded-xl bg-[#2563EB] flex items-center justify-center font-bold text-white text-sm shrink-0 shadow-sm">
+            CX
+          </div>
+          {(!isCollapsed || isMobile) && (
+            <span className="text-[#0F172A] font-bold text-lg tracking-tight">
+              CredX
+            </span>
+          )}
+        </div>
 
-    // Get sidebar items dynamically by role
-    const getSidebarItems = () => {
-        if (role === "STUDENT") {
-            return [
-                {
-                    id: "student-dashboard",
-                    label: "Dashboard",
-                    icon: LayoutDashboard,
-                    path: "/student"
-                },
-                {
-                    id: "student-placements",
-                    label: "Placements & Jobs",
-                    icon: Briefcase,
-                    submenu: [
-                        { label: "Explore Placements", path: "/student?tab=jobs" },
-                        { label: "My Applications", path: "/student?tab=applications" }
-                    ]
-                },
-                {
-                    id: "student-profile",
-                    label: "Academic Profile",
-                    icon: User,
-                    path: "/student?tab=profile"
-                }
-            ];
-        } else if (role === "COMPANY") {
-            return [
-                {
-                    id: "company-dashboard",
-                    label: "Overview",
-                    icon: LayoutDashboard,
-                    path: "/company"
-                },
-                {
-                    id: "company-jobs",
-                    label: "Job Management",
-                    icon: Briefcase,
-                    submenu: [
-                        { label: "Active Listings", path: "/company?tab=jobs" },
-                        { label: "Post a New Job", path: "/company?tab=new-job" }
-                    ]
-                },
-                {
-                    id: "company-students",
-                    label: "Student Directory",
-                    icon: Users,
-                    path: "/company?tab=students"
-                },
-                {
-                    id: "company-profile",
-                    label: "Recruiter Profile",
-                    icon: Building2,
-                    path: "/company?tab=profile"
-                }
-            ];
-        } else if (role === "ADMIN") {
-            return [
-                {
-                    id: "admin-dashboard",
-                    label: "Analytics Hub",
-                    icon: LayoutDashboard,
-                    path: "/admin"
-                },
-                {
-                    id: "admin-approvals",
-                    label: "Job Management",
-                    icon: ClipboardList,
-                    submenu: [
-                        { label: "Pending Approvals", path: "/admin?tab=pending" },
-                        { label: "All Placements", path: "/admin?tab=all-jobs" }
-                    ]
-                },
-                {
-                    id: "admin-students",
-                    label: "Student Directory",
-                    icon: Users,
-                    path: "/admin?tab=students"
-                }
-            ];
-        }
-        return [];
-    };
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4 px-3">
+          <ul className="space-y-1">
+            {items.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item);
 
-    const sidebarItems = getSidebarItems();
-    const bottomItems = [
-        {
-            id: "settings",
-            label: "Settings",
-            icon: Settings,
-            path: role === "STUDENT" ? "/student?tab=settings" : role === "COMPANY" ? "/company?tab=settings" : "/admin?tab=settings"
-        }
-    ];
-
-    const isLinkActive = (item) => {
-        if (item.path) {
-            const currentPath = location.pathname + location.search;
-            return currentPath === item.path || (location.pathname === item.path.split('?')[0] && !location.search && !item.path.includes('?'));
-        }
-        if (item.submenu) {
-            return item.submenu.some(sub => location.pathname + location.search === sub.path);
-        }
-        return false;
-    };
-
-    const renderMenuItem = (item) => {
-        const Icon = item.icon;
-        const isActive = isLinkActive(item);
-
-        const content = (
-            <>
-                <Icon size={18} className="nav-icon" />
-                {!isCollapsed && <span className="nav-label">{item.label}</span>}
-                {!isCollapsed && item.submenu && (
-                    <ChevronRight size={14} className="submenu-indicator-arrow" />
-                )}
-            </>
-        );
-
-        return (
-            <li 
-                key={item.id}
-                className={`sidebar-item-container sidebar-item-${item.id}`}
-                onMouseEnter={!isMobile ? (e) => handleParentMouseEnter(item, e) : undefined}
-                onMouseLeave={!isMobile ? handleParentMouseLeave : undefined}
-            >
-                {item.path ? (
-                    <Link to={item.path} className={`nav-link ${isActive ? "active" : ""}`}>
-                        {content}
-                    </Link>
-                ) : (
-                    <div className={`nav-link clickable-parent ${isActive ? "active-parent" : ""}`}>
-                        {content}
-                    </div>
-                )}
-            </li>
-        );
-    };
-
-    return (
-        <aside className={`sidebar ${isCollapsed ? "collapsed" : ""} ${mobileOpen ? "mobile-open" : ""}`}>
-            <div className={`sidebar-brand-container ${isCollapsed ? "collapsed-brand" : ""}`}>
-                <div className="sidebar-brand">
-                    {!isCollapsed ? (
-                        <>
-                            <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center font-bold text-white text-[13px] border border-white/15">
-                                    CX
-                                </div>
-                                <span className="logo-text-main">CredX</span>
-                            </div>
-                            <button className="sidebar-header-toggle" onClick={toggleSidebar} title="Collapse Sidebar">
-                                <PanelLeftClose size={18} />
-                            </button>
-                        </>
-                    ) : (
-                        <div className="flex flex-col items-center gap-3 w-full">
-                            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center font-bold text-white text-[13px] border border-white/15 mx-auto">
-                                CX
-                            </div>
-                            <button className="sidebar-header-toggle" onClick={toggleSidebar} title="Expand Sidebar">
-                                <PanelLeftOpen size={18} />
-                            </button>
-                        </div>
+              return (
+                <li key={item.id}>
+                  <Link
+                    to={item.path}
+                    onClick={() => isMobile && setMobileOpen(false)}
+                    title={isCollapsed ? item.label : undefined}
+                    className={`
+                      flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium
+                      transition-all duration-150 group relative
+                      ${active
+                        ? "bg-[#EFF6FF] text-[#2563EB] font-semibold"
+                        : "text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
+                      }
+                      ${isCollapsed && !isMobile ? "justify-center px-0" : ""}
+                    `}
+                  >
+                    {active && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-[#2563EB] rounded-r-full" />
                     )}
-                </div>
+                    <Icon className={`w-[18px] h-[18px] shrink-0 ${active ? "text-[#2563EB]" : "text-[#94A3B8] group-hover:text-[#64748B]"}`} />
+                    {(!isCollapsed || isMobile) && (
+                      <span>{item.label}</span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        {/* Bottom Section */}
+        <div className="border-t border-[#E2E8F0] px-3 py-3 space-y-1 shrink-0">
+          {/* Settings */}
+          <Link
+            to={settingsPath}
+            onClick={() => isMobile && setMobileOpen(false)}
+            title={isCollapsed ? "Settings" : undefined}
+            className={`
+              flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium
+              transition-all duration-150
+              ${location.pathname === settingsPath
+                ? "bg-[#EFF6FF] text-[#2563EB] font-semibold"
+                : "text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]"
+              }
+              ${isCollapsed && !isMobile ? "justify-center px-0" : ""}
+            `}
+          >
+            <Settings className="w-[18px] h-[18px] shrink-0" />
+            {(!isCollapsed || isMobile) && <span>Settings</span>}
+          </Link>
+
+          {/* Support Section */}
+          {(!isCollapsed || isMobile) && (
+            <div className="mt-3 bg-[#F8FAFC] border border-[#E2E8F0] rounded-xl p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <HelpCircle className="w-4 h-4 text-[#64748B]" />
+                <span className="text-xs font-semibold text-[#0F172A]">Support</span>
+              </div>
+              <p className="text-[11px] text-[#64748B] mb-2">Need assistance?</p>
+              <button className="flex items-center gap-1.5 text-[11px] font-semibold text-[#2563EB] hover:text-[#1D4ED8] transition-colors cursor-pointer">
+                <MessageSquare className="w-3.5 h-3.5" />
+                Contact Team
+              </button>
             </div>
+          )}
+        </div>
 
-            <nav className="sidebar-nav">
-                <ul className="nav-list">
-                    {sidebarItems.map(renderMenuItem)}
-                </ul>
-            </nav>
-
-            <div className="sidebar-footer">
-                <ul className="nav-list">
-                    {bottomItems.map(renderMenuItem)}
-                </ul>
-            </div>
-
-            {!isMobile && hoveredMenu && (
-                <FlyoutMenu 
-                    menu={hoveredMenu}
-                    position={flyoutPosition}
-                    onMouseEnter={handleFlyoutMouseEnter}
-                    onMouseLeave={handleFlyoutMouseLeave}
-                />
-            )}
-        </aside>
-    );
+        {/* Collapse Toggle (desktop only) */}
+        {!isMobile && (
+          <button
+            onClick={toggleSidebar}
+            className="absolute -right-3 top-20 w-6 h-6 bg-white border border-[#E2E8F0] rounded-full flex items-center justify-center text-[#64748B] hover:text-[#0F172A] hover:shadow-sm transition-all cursor-pointer z-10"
+          >
+            {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+          </button>
+        )}
+      </aside>
+    </>
+  );
 }
 
 export default Sidebar;

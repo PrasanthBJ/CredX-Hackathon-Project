@@ -1,716 +1,244 @@
 import { useEffect, useState, useRef } from "react";
-import { useLocation } from "react-router-dom";
-import PageHeader from "../components/PageHeader";
-import Card from "../components/Card";
+import { useNavigate } from "react-router-dom";
 import Spinner from "../components/Spinner";
-import EmptyState from "../components/EmptyState";
-import StatusBadge from "../components/StatusBadge";
-import studentService from "../services/studentService";
+import StatCard from "../components/shared/StatCard";
 import dashboardService from "../services/dashboardService";
 import authService from "../services/authService";
-import { User, FileText, Briefcase, Calendar, GraduationCap, Award, ExternalLink, BarChart2 } from "lucide-react";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from "recharts";
+import {
+  FileText, Award, Calendar, BarChart2, Briefcase, ArrowRight, Lightbulb, Bell,
+} from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function StudentDashboard() {
-    const [loading, setLoading] = useState(true);
-    const [profile, setProfile] = useState(null);
-    const [jobs, setJobs] = useState([]);
-    const [applications, setApplications] = useState([]);
-    
-    // Form state
-    const [isEditing, setIsEditing] = useState(false);
-    const [branch, setBranch] = useState("");
-    const [gpa, setGpa] = useState("");
-    const [gradYear, setGradYear] = useState("");
-    const [resumeUrl, setResumeUrl] = useState("");
-    
-    const [submitting, setSubmitting] = useState(false);
-    const [actionLoading, setActionLoading] = useState(null); // stores postingId of the job currently applying to
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
+  const [jobs, setJobs] = useState([]);
+  const [applications, setApplications] = useState([]);
+  const navigate = useNavigate();
+  const abortControllerRef = useRef(null);
 
-    const abortControllerRef = useRef(null);
-    const location = useLocation();
-    const profileRef = useRef(null);
-    const applicationsRef = useRef(null);
-    const jobsRef = useRef(null);
+  const loadData = async (signal) => {
+    try {
+      setLoading(true);
+      const data = await dashboardService.getStudentDashboardData({ signal });
+      setProfile(data.profile);
+      setJobs(data.jobs);
+      setApplications(data.applications);
+    } catch (err) { /* handled */ }
+    finally { setLoading(false); }
+  };
 
-    const [activeTab, setActiveTab] = useState("dashboard");
-    const [settingsName, setSettingsName] = useState("");
-    const [settingsEmail, setSettingsEmail] = useState("");
-    const [settingsProfileImage, setSettingsProfileImage] = useState("");
-    const [currentPassword, setCurrentPassword] = useState("");
-    const [newPassword, setNewPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
-    const [savingSettings, setSavingSettings] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    loadData(controller.signal);
+    return () => { if (abortControllerRef.current) abortControllerRef.current.abort(); };
+  }, []);
 
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        const tab = params.get("tab");
-        if (tab === "profile") {
-            setIsEditing(true);
-            setActiveTab("dashboard");
-            setTimeout(() => {
-                profileRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }, 100);
-        } else if (tab === "applications") {
-            setIsEditing(false);
-            setActiveTab("dashboard");
-            setTimeout(() => {
-                applicationsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }, 100);
-        } else if (tab === "jobs") {
-            setIsEditing(false);
-            setActiveTab("dashboard");
-            setTimeout(() => {
-                jobsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }, 100);
-        } else if (tab === "settings") {
-            setActiveTab("settings");
-        } else {
-            setActiveTab("dashboard");
-            setIsEditing(false);
-        }
-    }, [location.search]);
+  // Stats calculation
+  const shortlistedCount = applications.filter(a => a.status === "SHORTLISTED").length;
+  const interviewCount = applications.filter(a => a.status === "INTERVIEW").length;
+  const totalJobsCount = jobs.length;
+  const eligibleJobsCount = jobs.filter(j => profile ? profile.gpa >= j.minGpa : false).length;
+  const placementRate = totalJobsCount > 0 ? Math.round((eligibleJobsCount / totalJobsCount) * 100) : 0;
 
-    const loadSettings = async () => {
-        try {
-            const data = await authService.getSettings();
-            setSettingsName(data.name || "");
-            setSettingsEmail(data.email || "");
-            setSettingsProfileImage(data.profileImage || "");
-            if (data.profileImage) {
-                localStorage.setItem("profileImage", data.profileImage);
-                window.dispatchEvent(new CustomEvent("profile-image-updated", { detail: data.profileImage }));
-            }
-        } catch (err) {
-            // Handled
-        }
-    };
+  // Profile completion
+  const profileFields = profile ? [profile.branch, profile.gpa, profile.gradYear, profile.resumeUrl].filter(Boolean).length : 0;
+  const profileCompletion = Math.round((profileFields / 4) * 100);
 
-    const loadData = async (signal) => {
-        try {
-            setLoading(true);
-            const data = await dashboardService.getStudentDashboardData({ signal });
-            setProfile(data.profile);
-            setJobs(data.jobs);
-            setApplications(data.applications);
-            
-            if (data.profile) {
-                setBranch(data.profile.branch || "");
-                setGpa(data.profile.gpa !== undefined && data.profile.gpa !== null ? String(data.profile.gpa) : "");
-                setGradYear(data.profile.gradYear !== undefined && data.profile.gradYear !== null ? String(data.profile.gradYear) : "");
-                setResumeUrl(data.profile.resumeUrl || "");
-            } else {
-                setIsEditing(true); // default to form if profile doesn't exist
-            }
+  // Upcoming deadlines from jobs
+  const upcomingDeadlines = [...jobs]
+    .filter(j => new Date(j.deadline) > new Date())
+    .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
+    .slice(0, 3);
 
-            await loadSettings();
-        } catch (err) {
-            // Handled globally
-        } finally {
-            setLoading(false);
-        }
-    };
+  // Recent applications (last 3)
+  const recentApplications = [...applications]
+    .sort((a, b) => new Date(b.appliedAt) - new Date(a.appliedAt))
+    .slice(0, 3);
 
-    useEffect(() => {
-        const controller = new AbortController();
-        abortControllerRef.current = controller;
-        loadData(controller.signal);
-
-        return () => {
-            if (abortControllerRef.current) {
-                abortControllerRef.current.abort();
-            }
-        };
-    }, []);
-
-    const handleSaveProfile = async (e) => {
-        e.preventDefault();
-        setSubmitting(true);
-        try {
-            const profileData = {
-                branch: branch || null,
-                gpa: gpa && !isNaN(parseFloat(gpa)) ? parseFloat(gpa) : null,
-                gradYear: gradYear && !isNaN(parseInt(gradYear)) ? parseInt(gradYear) : null,
-                resumeUrl: resumeUrl || null
-            };
-            const updated = await studentService.createOrUpdateProfile(profileData);
-            setProfile(updated);
-            setIsEditing(false);
-            
-            window.dispatchEvent(new CustomEvent("api-toast-message", {
-                detail: { type: "success", message: "Profile saved successfully!" }
-            }));
-            
-            loadData();
-        } catch (err) {
-            // Handled globally
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
-    const handleSaveSettings = async (e) => {
-        e.preventDefault();
-        setSavingSettings(true);
-        try {
-            await authService.updateSettings({
-                name: settingsName,
-                email: settingsEmail,
-                profileImage: settingsProfileImage
-            });
-            localStorage.setItem("profileImage", settingsProfileImage || "");
-            window.dispatchEvent(new CustomEvent("profile-image-updated", { detail: settingsProfileImage || "" }));
-            window.dispatchEvent(new CustomEvent("api-toast-message", {
-                detail: { type: "success", message: "Account details updated successfully!" }
-            }));
-        } catch (err) {
-            window.dispatchEvent(new CustomEvent("api-toast-message", {
-                detail: { type: "error", message: err.response?.data?.message || "Failed to update settings" }
-            }));
-        } finally {
-            setSavingSettings(false);
-        }
-    };
-
-    const handleChangePassword = async (e) => {
-        e.preventDefault();
-        if (!currentPassword || !newPassword) {
-            window.dispatchEvent(new CustomEvent("api-toast-message", {
-                detail: { type: "error", message: "Please fill in all password fields." }
-            }));
-            return;
-        }
-        if (newPassword !== confirmPassword) {
-            window.dispatchEvent(new CustomEvent("api-toast-message", {
-                detail: { type: "error", message: "New passwords do not match." }
-            }));
-            return;
-        }
-        setSavingSettings(true);
-        try {
-            await authService.updateSettings({
-                currentPassword,
-                newPassword
-            });
-            window.dispatchEvent(new CustomEvent("api-toast-message", {
-                detail: { type: "success", message: "Password updated successfully!" }
-            }));
-            setCurrentPassword("");
-            setNewPassword("");
-            setConfirmPassword("");
-        } catch (err) {
-            window.dispatchEvent(new CustomEvent("api-toast-message", {
-                detail: { type: "error", message: err.response?.data?.message || "Failed to change password." }
-            }));
-        } finally {
-            setSavingSettings(false);
-        }
-    };
-
-    const handleApply = async (postingId) => {
-        setActionLoading(postingId);
-        try {
-            const newApp = await studentService.applyToJobPosting(postingId);
-            setApplications((prev) => [...prev, newApp]);
-            
-            window.dispatchEvent(new CustomEvent("api-toast-message", {
-                detail: { type: "success", message: "Application submitted successfully!" }
-            }));
-        } catch (err) {
-            // Handled globally
-        } finally {
-            setActionLoading(null);
-        }
-    };
-
-    const hasApplied = (postingId) => {
-        return applications.some((app) => app.postingId === postingId);
-    };
-
-    const getApplicationStatus = (postingId) => {
-        const app = applications.find((a) => a.postingId === postingId);
-        return app ? app.status : null;
-    };
-
-    // Calculate placement readiness values for Recharts
-    const totalJobsCount = jobs.length;
-    const eligibleJobsCount = jobs.filter(j => profile ? profile.gpa >= j.minGpa : false).length;
-    
-    const readinessData = [
-        { name: "Total Placements", count: totalJobsCount },
-        { name: "Compatible (CGPA)", count: eligibleJobsCount }
-    ];
-
-    if (loading) {
-        return (
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-                <Spinner label="Loading your candidate profile..." />
-            </div>
-        );
-    }
-
+  if (loading) {
     return (
-        <div className="pb-16">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {activeTab === "settings" ? (
-                    <div className="max-w-4xl mx-auto">
-                        <PageHeader 
-                            title="Account & Security Settings" 
-                            subtitle="Manage your personal details and change your password." 
-                        />
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
-                            <div className="md:col-span-1">
-                                <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
-                                    <div className="font-bold text-xs uppercase text-slate-400 tracking-wider mb-3 px-2">Settings Menu</div>
-                                    <button className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold bg-accent-light text-primary transition-all">
-                                        Account & Security
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="md:col-span-2 space-y-8">
-                                {/* Account Profile Details */}
-                                <Card className="border border-slate-100 shadow-sm">
-                                    <div className="mb-5 pb-4 border-b border-slate-100">
-                                        <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide">Personal Details</h3>
-                                    </div>
-                                    <form onSubmit={handleSaveSettings} className="space-y-4">
-                                        {/* Profile Photo Upload */}
-                                        <div className="flex flex-col sm:flex-row items-center gap-4 mb-6 pb-6 border-b border-slate-100">
-                                            <img
-                                                src={settingsProfileImage || "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=150&q=80"}
-                                                alt="Profile Preview"
-                                                className="w-16 h-16 rounded-full object-cover border border-slate-200 shadow-sm"
-                                            />
-                                            <div className="flex flex-col gap-1.5 items-center sm:items-start">
-                                                <label className="bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg px-4 py-2 border border-slate-200 transition-all cursor-pointer inline-block">
-                                                    Upload Profile Photo
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        className="hidden"
-                                                        onChange={(e) => {
-                                                            const file = e.target.files[0];
-                                                            if (file) {
-                                                                const reader = new FileReader();
-                                                                reader.onloadend = () => {
-                                                                    setSettingsProfileImage(reader.result);
-                                                                };
-                                                                reader.readAsDataURL(file);
-                                                            }
-                                                        }}
-                                                    />
-                                                </label>
-                                                {settingsProfileImage && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setSettingsProfileImage("")}
-                                                        className="text-[10px] text-rose-500 font-bold uppercase tracking-wider hover:underline cursor-pointer"
-                                                    >
-                                                        Remove Photo
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Full Name</label>
-                                                <input
-                                                    required
-                                                    value={settingsName}
-                                                    onChange={(e) => setSettingsName(e.target.value)}
-                                                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Email Address</label>
-                                                <input
-                                                    required
-                                                    type="email"
-                                                    value={settingsEmail}
-                                                    onChange={(e) => setSettingsEmail(e.target.value)}
-                                                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="flex justify-end pt-2">
-                                            <button
-                                                type="submit"
-                                                disabled={savingSettings}
-                                                className="bg-accent hover:bg-accent-hover text-white text-xs font-semibold rounded-lg px-6 py-2 transition-all disabled:opacity-60 cursor-pointer"
-                                            >
-                                                {savingSettings ? "Saving..." : "Save Account Info"}
-                                            </button>
-                                        </div>
-                                    </form>
-                                </Card>
-
-                                {/* Security Change Password */}
-                                <Card className="border border-slate-100 shadow-sm">
-                                    <div className="mb-5 pb-4 border-b border-slate-100">
-                                        <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide">Change Password</h3>
-                                    </div>
-                                    <form onSubmit={handleChangePassword} className="space-y-4">
-                                        <div>
-                                            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Current Password</label>
-                                            <input
-                                                type="password"
-                                                value={currentPassword}
-                                                onChange={(e) => setCurrentPassword(e.target.value)}
-                                                placeholder="••••••••"
-                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
-                                            />
-                                        </div>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">New Password</label>
-                                                <input
-                                                    type="password"
-                                                    value={newPassword}
-                                                    onChange={(e) => setNewPassword(e.target.value)}
-                                                    placeholder="••••••••"
-                                                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Confirm New Password</label>
-                                                <input
-                                                    type="password"
-                                                    value={confirmPassword}
-                                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                                    placeholder="••••••••"
-                                                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="flex justify-end pt-2">
-                                            <button
-                                                type="submit"
-                                                disabled={savingSettings}
-                                                className="bg-accent hover:bg-accent-hover text-white text-xs font-semibold rounded-lg px-6 py-2 transition-all disabled:opacity-60 cursor-pointer"
-                                            >
-                                                {savingSettings ? "Changing..." : "Change Password"}
-                                            </button>
-                                        </div>
-                                    </form>
-                                </Card>
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <>
-                        <PageHeader 
-                            title="Student Dashboard" 
-                            subtitle="Manage your academic profile, view active recruiting applications, and explore open placements." 
-                        />
-
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                            {/* Left Column: Profile Card & Placement Readiness Chart */}
-                            <div className="lg:col-span-1 space-y-8" ref={profileRef}>
-                                <Card className="border border-slate-100 shadow-sm">
-                                    <div className="flex justify-between items-center mb-5 pb-4 border-b border-slate-100">
-                                        <div className="flex items-center gap-2">
-                                            <User className="w-4 h-4 text-accent" />
-                                            <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">Academic Profile</h2>
-                                        </div>
-                                        {profile && !isEditing && (
-                                            <button
-                                                onClick={() => setIsEditing(true)}
-                                                className="text-xs font-semibold text-accent hover:text-accent-hover transition-colors cursor-pointer"
-                                            >
-                                                Edit profile
-                                            </button>
-                                        )}
-                                    </div>
-
-                                    {isEditing ? (
-                                        <form onSubmit={handleSaveProfile} className="space-y-4">
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                                                    Branch / Major
-                                                </label>
-                                                <input
-                                                    required
-                                                    value={branch}
-                                                    onChange={(e) => setBranch(e.target.value)}
-                                                    placeholder="Computer Science"
-                                                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs bg-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-all"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                                                    GPA (out of 10.0)
-                                                </label>
-                                                <input
-                                                    required
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    max="10"
-                                                    value={gpa}
-                                                    onChange={(e) => setGpa(e.target.value)}
-                                                    placeholder="9.15"
-                                                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs bg-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-all"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                                                    Graduation Year
-                                                </label>
-                                                <input
-                                                    required
-                                                    type="number"
-                                                    value={gradYear}
-                                                    onChange={(e) => setGradYear(e.target.value)}
-                                                    placeholder="2026"
-                                                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs bg-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-all"
-                                                />
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                                                    Resume URL
-                                                </label>
-                                                <input
-                                                    required
-                                                    type="url"
-                                                    value={resumeUrl}
-                                                    onChange={(e) => setResumeUrl(e.target.value)}
-                                                    placeholder="https://drive.google.com/..."
-                                                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs bg-white placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-all"
-                                                />
-                                            </div>
-
-                                            <div className="flex gap-2.5 pt-2">
-                                                <button
-                                                    type="submit"
-                                                    disabled={submitting}
-                                                    className="flex-1 bg-accent hover:bg-accent-hover text-white text-xs font-semibold rounded-lg py-2 transition-all disabled:opacity-60 cursor-pointer"
-                                                >
-                                                    {submitting ? "Saving..." : "Save Profile"}
-                                                </button>
-                                                {profile && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setIsEditing(false);
-                                                            setBranch(profile.branch);
-                                                            setGpa(profile.gpa);
-                                                            setGradYear(profile.gradYear);
-                                                            setResumeUrl(profile.resumeUrl);
-                                                        }}
-                                                        className="flex-1 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-medium rounded-lg py-2 border border-slate-200/60 transition-all cursor-pointer"
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </form>
-                                    ) : (
-                                        <div className="space-y-4 pt-1">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-blue-50 text-accent flex items-center justify-center">
-                                                    <GraduationCap className="w-4 h-4" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Branch</p>
-                                                    <p className="text-xs font-semibold text-slate-800 mt-0.5">{profile.branch}</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-blue-50 text-accent flex items-center justify-center">
-                                                    <Award className="w-4 h-4" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Academic GPA</p>
-                                                    <p className="text-xs font-semibold text-slate-800 mt-0.5">{profile.gpa.toFixed(2)} / 10.00</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-blue-50 text-accent flex items-center justify-center">
-                                                    <Calendar className="w-4 h-4" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Graduation Year</p>
-                                                    <p className="text-xs font-semibold text-slate-800 mt-0.5">{profile.gradYear}</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="pt-4 border-t border-slate-100 flex justify-center">
-                                                <a
-                                                    href={profile.resumeUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:text-accent-hover transition-colors"
-                                                >
-                                                    View Uploaded Resume
-                                                    <ExternalLink className="w-3.5 h-3.5" />
-                                                </a>
-                                            </div>
-                                        </div>
-                                    )}
-                                </Card>
-
-                                {/* Placement Readiness Chart */}
-                                <Card className="border border-slate-100 shadow-sm">
-                                    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
-                                        <BarChart2 className="w-4 h-4 text-accent" />
-                                        <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Placement Readiness</h3>
-                                    </div>
-                                    <div className="w-full h-36">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={readinessData} layout="vertical" margin={{ left: -10, right: 10, top: 10, bottom: 5 }}>
-                                                <XAxis type="number" stroke="#94a3b8" fontSize={9} />
-                                                <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={9} width={90} />
-                                                <Tooltip contentStyle={{ fontSize: '10px', borderRadius: '6px' }} />
-                                                <Bar dataKey="count" fill="#2563EB" radius={[0, 4, 4, 0]} barSize={10} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </Card>
-                            </div>
-
-                            {/* Right Columns: Open Postings and Applications */}
-                            <div className="lg:col-span-2 space-y-8">
-                                {/* My Applications Section */}
-                                <div ref={applicationsRef}>
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <FileText className="w-4.5 h-4.5 text-slate-700" />
-                                        <h2 className="text-base font-bold text-slate-900">My Placements Application History</h2>
-                                    </div>
-                                    {applications.length === 0 ? (
-                                        <EmptyState 
-                                            title="No active applications" 
-                                            description="Explore the open placements below to submit your profile." 
-                                        />
-                                    ) : (
-                                        <div className="space-y-3">
-                                            {applications.map((app, index) => (
-                                                <motion.div
-                                                    key={app.id}
-                                                    initial={{ opacity: 0, y: 10 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                                                >
-                                                    <Card className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 py-4 border border-slate-100 shadow-sm">
-                                                        <div>
-                                                            <h3 className="text-xs font-bold text-slate-800">{app.postingTitle}</h3>
-                                                            <p className="text-[11px] text-slate-500 mt-0.5">{app.companyName}</p>
-                                                            <p className="text-[10px] text-slate-400 mt-2">
-                                                                Submitted: {new Date(app.appliedAt).toLocaleDateString()}
-                                                            </p>
-                                                        </div>
-                                                        <StatusBadge status={app.status} />
-                                                    </Card>
-                                                </motion.div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Open Jobs Section */}
-                                <div ref={jobsRef}>
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <Briefcase className="w-4.5 h-4.5 text-slate-700" />
-                                        <h2 className="text-base font-bold text-slate-900">Open Recruiting Openings</h2>
-                                    </div>
-                                    {jobs.length === 0 ? (
-                                        <EmptyState 
-                                            title="No listings available" 
-                                            description="Check back later for approved opportunities from placement partners." 
-                                        />
-                                    ) : (
-                                        <div className="space-y-4">
-                                            {jobs.map((job, index) => {
-                                                const applied = hasApplied(job.id);
-                                                const status = getApplicationStatus(job.id);
-                                                const isGpaEligible = profile ? profile.gpa >= job.minGpa : false;
-                                                
-                                                return (
-                                                    <motion.div
-                                                        key={job.id}
-                                                        initial={{ opacity: 0, y: 12 }}
-                                                        animate={{ opacity: 1, y: 0 }}
-                                                        transition={{ duration: 0.4, delay: index * 0.06 }}
-                                                    >
-                                                        <Card className="relative hover:border-slate-200 transition-all border border-slate-100 shadow-sm">
-                                                            <div className="flex justify-between items-start mb-3">
-                                                                <div>
-                                                                    <h3 className="text-sm font-bold text-slate-900">{job.title}</h3>
-                                                                    <p className="text-xs text-slate-500">{job.companyName}</p>
-                                                                </div>
-                                                                {applied && <StatusBadge status={status} />}
-                                                            </div>
-
-                                                            <p className="text-xs text-slate-600 line-clamp-3 mb-4 leading-relaxed whitespace-pre-wrap">
-                                                                {job.description}
-                                                            </p>
-
-                                                            {job.eligibility && (
-                                                                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mb-4 text-xs">
-                                                                    <span className="font-semibold text-slate-700">Eligibility:</span>{" "}
-                                                                    <span className="text-slate-600">{job.eligibility}</span>
-                                                                </div>
-                                                            )}
-
-                                                            <div className="flex flex-wrap items-center justify-between gap-4 pt-3.5 border-t border-slate-100">
-                                                                <div className="flex gap-4">
-                                                                    <div className="text-[10px] font-medium">
-                                                                        <span className="text-slate-400">MIN GPA:</span>{" "}
-                                                                        <span className={`font-bold ${isGpaEligible ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                                                            {job.minGpa.toFixed(2)}
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="text-[10px] font-medium">
-                                                                        <span className="text-slate-400">DEADLINE:</span>{" "}
-                                                                        <span className="font-bold text-slate-600">
-                                                                            {new Date(job.deadline).toLocaleDateString()}
-                                                                        </span>
-                                                                    </div>
-                                                                </div>
-
-                                                                {!profile ? (
-                                                                    <span className="text-[10px] font-semibold text-rose-500 uppercase tracking-wider">
-                                                                        Fill profile to apply
-                                                                    </span>
-                                                                ) : applied ? (
-                                                                    <button
-                                                                        disabled
-                                                                        className="bg-slate-50 text-slate-400 text-xs font-semibold rounded-lg px-4 py-2 border border-slate-200/60 cursor-not-allowed"
-                                                                    >
-                                                                        Applied
-                                                                    </button>
-                                                                ) : !isGpaEligible ? (
-                                                                    <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">
-                                                                        GPA requires {job.minGpa.toFixed(2)}
-                                                                    </span>
-                                                                ) : (
-                                                                    <button
-                                                                        onClick={() => handleApply(job.id)}
-                                                                        disabled={actionLoading === job.id}
-                                                                        className="bg-accent hover:bg-accent-hover text-white text-xs font-semibold rounded-lg px-4 py-2 transition-all shadow-sm cursor-pointer"
-                                                                    >
-                                                                        {actionLoading === job.id ? "Applying..." : "Apply Now"}
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        </Card>
-                                                    </motion.div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </>
-                )}
-            </div>
-        </div>
+      <div className="flex items-center justify-center py-20">
+        <Spinner label="Loading overview..." />
+      </div>
     );
+  }
+
+  return (
+    <div className="space-y-8 animate-fade-in">
+      {/* Welcome Section */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[#0F172A]">
+            Welcome back, {profile?.branch ? "Dinesh" : "Student"}! 👋
+          </h1>
+          <p className="text-sm text-[#64748B] mt-1">Here is a summary of your campus recruiting progress.</p>
+        </div>
+
+        {/* Profile Completeness Card */}
+        <div className="flex items-center gap-3 bg-white border border-[#E2E8F0] rounded-2xl px-5 py-3 shadow-sm shrink-0">
+          <div className="relative w-12 h-12">
+            <svg className="w-12 h-12 -rotate-90" viewBox="0 0 48 48">
+              <circle cx="24" cy="24" r="20" fill="none" stroke="#E2E8F0" strokeWidth="4" />
+              <circle cx="24" cy="24" r="20" fill="none" stroke="#2563EB" strokeWidth="4"
+                strokeDasharray={`${(profileCompletion / 100) * 125.6} 125.6`} strokeLinecap="round" />
+            </svg>
+            <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-[#2563EB]">
+              {profileCompletion}%
+            </span>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-[#0F172A]">Academic Profile</p>
+            <button
+              onClick={() => navigate("/student/profile")}
+              className="text-[11px] text-[#2563EB] font-medium hover:underline flex items-center gap-0.5 mt-0.5 cursor-pointer"
+            >
+              {profileCompletion < 100 ? "Complete your profile" : "Update Profile"}
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Statistics Section */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <StatCard
+          icon={<FileText className="w-5 h-5" />}
+          label="My Applications"
+          value={applications.length}
+          subtext="Total submissions"
+          delay={0}
+        />
+        <StatCard
+          icon={<Award className="w-5 h-5" />}
+          label="Shortlisted Applications"
+          value={shortlistedCount}
+          subtext="Passed screening"
+          delay={0.05}
+        />
+        <StatCard
+          icon={<Calendar className="w-5 h-5" />}
+          label="Scheduled Interviews"
+          value={interviewCount}
+          subtext="Upcoming meetings"
+          delay={0.1}
+        />
+        <StatCard
+          icon={<BarChart2 className="w-5 h-5" />}
+          label="Job Eligibility Match"
+          value={`${placementRate}%`}
+          subtext="Compatible vacancies"
+          highlight
+          delay={0.15}
+        />
+      </div>
+
+      {/* Lower Dashboard Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left/Middle Column: Quick Actions & Recent Activity */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Quick Actions Panel */}
+          <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-[#0F172A] mb-4">Quick Actions</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <button
+                onClick={() => navigate("/student/jobs")}
+                className="flex flex-col items-center justify-center p-5 border border-[#E2E8F0] hover:border-[#2563EB] hover:bg-[#EFF6FF]/20 rounded-2xl transition-all cursor-pointer text-center group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center mb-3 group-hover:scale-105 transition-all">
+                  <Briefcase className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-semibold text-[#0F172A]">Browse Jobs</span>
+                <span className="text-[10px] text-[#64748B] mt-1">Explore open roles</span>
+              </button>
+
+              <button
+                onClick={() => navigate("/student/settings")}
+                className="flex flex-col items-center justify-center p-5 border border-[#E2E8F0] hover:border-[#2563EB] hover:bg-[#EFF6FF]/20 rounded-2xl transition-all cursor-pointer text-center group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center mb-3 group-hover:scale-105 transition-all">
+                  <Award className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-semibold text-[#0F172A]">Manage Account</span>
+                <span className="text-[10px] text-[#64748B] mt-1">Update passwords</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Recent Applications Feed */}
+          <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-[#0F172A]">Recent Activity</h3>
+              <button
+                onClick={() => navigate("/student/applications")}
+                className="text-xs font-semibold text-[#2563EB] hover:underline cursor-pointer"
+              >
+                View all applications
+              </button>
+            </div>
+
+            {recentApplications.length === 0 ? (
+              <p className="text-xs text-[#64748B] text-center py-6">No applications submitted yet.</p>
+            ) : (
+              <div className="divide-y divide-[#E2E8F0]">
+                {recentApplications.map((app) => (
+                  <div key={app.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
+                    <div>
+                      <p className="text-xs font-semibold text-[#0F172A]">{app.postingTitle}</p>
+                      <p className="text-[11px] text-[#64748B]">{app.companyName} · Applied {new Date(app.appliedAt).toLocaleDateString()}</p>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg bg-[#EFF6FF] text-[#2563EB] border border-[#DBEAFE]`}>
+                      {app.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Column: Deadlines, Tips, notifications */}
+        <div className="space-y-6">
+          {/* Upcoming Deadlines Widget */}
+          <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-[#0F172A] mb-4">Upcoming Deadlines</h3>
+            {upcomingDeadlines.length === 0 ? (
+              <p className="text-xs text-[#64748B] text-center py-4">No upcoming deadlines.</p>
+            ) : (
+              <div className="space-y-3">
+                {upcomingDeadlines.map((job) => {
+                  const daysLeft = Math.ceil((new Date(job.deadline) - new Date()) / (1000 * 60 * 60 * 24));
+                  return (
+                    <div key={job.id} className="flex items-center justify-between text-xs">
+                      <div>
+                        <p className="font-semibold text-[#0F172A]">{job.companyName} – {job.title.split(' ')[0]}</p>
+                        <p className="text-[11px] text-[#64748B]">Apply by {new Date(job.deadline).toLocaleDateString()}</p>
+                      </div>
+                      <span className={`font-bold px-2 py-0.5 rounded-lg text-[10px] ${
+                        daysLeft <= 3 ? "bg-red-50 text-[#EF4444]" : daysLeft <= 7 ? "bg-amber-50 text-amber-600" : "bg-[#EFF6FF] text-[#2563EB]"
+                      }`}>
+                        {daysLeft} days
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Tips */}
+          <div className="bg-white border border-[#E2E8F0] rounded-2xl p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-2.5">
+              <Lightbulb className="w-4 h-4 text-amber-500" />
+              <h3 className="text-xs font-bold text-[#0F172A] uppercase tracking-wider">Placement Tip</h3>
+            </div>
+            <p className="text-xs text-[#64748B] leading-relaxed">
+              Completing your dynamic academic profile increases recruiters' filtering match score. Go to the profile tab to upload your updated resume details!
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
