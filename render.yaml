@@ -1,8 +1,6 @@
 services:
   - type: web
     name: credx-backend
-    runtime: java
+    runtime: docker
     rootDir: backend
-    buildCommand: ./mvnw clean package -DskipTests
-    startCommand: java -jar target/*.jar
     plan: free
